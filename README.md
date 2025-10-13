@@ -114,7 +114,7 @@ docker run -d \
     -p 5000:5000 \
     flaskapp:latest
 
-```
+````
 
 ## Notes
 
@@ -126,5 +126,5 @@ docker run -d \
 
 - If you encounter issues, check Docker logs and error messages for troubleshooting.
 
-```
+````
 
