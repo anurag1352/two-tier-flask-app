@@ -1,0 +1,29 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: two-tier-deployment
+  namespace: two-tier
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: two-tier
+  template:
+    metadata:
+      labels:
+        app: two-tier
+    spec:
+      containers:
+      - name: two-tier-ctr
+        image: anurag904/two-tier-app:latest
+        ports:
+          - containerPort: 5000
+        env:
+          - name: MYSQL_HOST
+            value: "mysql-service"
+          - name: MYSQL_USER
+            value: "root"
+          - name: MYSQL_PASSWORD
+            value: "root"
+          - name: MYSQL_DB
+            value: "devops"
