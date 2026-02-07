@@ -1,39 +1,81 @@
-pipeline{
-    
-    agent { label "dev" }
-    stages{
-        stage("Code clone"){
-            steps{
-                echo "Code Cloning......"
-                git url: "https://github.com/anurag1352/two-tier-flask-app.git", branch: "master"
-                echo "Cloning Done......"
+pipeline {
+    agent any
+
+    stages {
+
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
             }
         }
-        stage("Build Image"){
-            steps{
-                echo "Image Build start.."
-                sh "docker build -t two-tier-app ."
-                echo "Image Build Sucessfully.."
-                
+
+        stage('Code Clone') {
+            steps {
+                git url: 'https://github.com/anurag1352/two-tier-flask-app.git', branch: 'master'
             }
         }
-        stage("Code Test"){
-            steps{
-                echo "Testing Start"
-                echo "Testing done..."
+
+        stage('Code Test') {
+            steps {
+                echo "Code Testing Start"
+                echo "Code Is OK"
             }
         }
-        stage("Scan Image & Files"){
-            steps{
-                sh "trivy fs . -o results.json"
+
+        stage('Trivy FS Scan') {
+            steps {
+                sh "trivy fs . -o trivyfs.txt"
             }
         }
-        stage("Deployment"){
-            steps{
-                echo "Deployment Start.."
-                sh "docker-compose down && docker-compose up -d"
-                echo "Deployment Done....."
+
+        stage('Docker Image Build') {
+            steps {
+                sh "docker build -t two-tier-app:latest ."
             }
+        }
+
+        stage("Push To DockerHub") {
+            steps {
+                withCredentials([usernamePassword(credentialsId: "docker-creds", passwordVariable: "dockerHubPass", usernameVariable: "dockerHubUser")]) {
+                    sh "echo ${env.dockerHubPass} | docker login -u ${env.dockerHubUser} --password-stdin"
+                    sh "docker tag two-tier-app:latest ${env.dockerHubUser}/two-tier-app:latest"
+                    sh "docker push ${env.dockerHubUser}/two-tier-app:latest"
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh 'docker-compose down && docker-compose up -d'
+            }
+        }
+    }
+
+    post {
+        success {
+            emailext(
+                subject: "✅ Jenkins Build SUCCESS - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                <h2>Build Successful 🎉</h2>
+                <p><b>Job:</b> ${env.JOB_NAME}</p>
+                <p><b>Build Number:</b> ${env.BUILD_NUMBER}</p>
+                <p><b>Build URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                """,
+                to: "anurag13520@gmail.com"
+            )
+        }
+
+        failure {
+            emailext(
+                subject: "❌ Jenkins Build FAILED - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                <h2>Build Failed 🚨</h2>
+                <p><b>Job:</b> ${env.JOB_NAME}</p>
+                <p><b>Build Number:</b> ${env.BUILD_NUMBER}</p>
+                <p><b>Build URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                """,
+                to: "anurag13520@gmail.com"
+            )
         }
     }
 }
